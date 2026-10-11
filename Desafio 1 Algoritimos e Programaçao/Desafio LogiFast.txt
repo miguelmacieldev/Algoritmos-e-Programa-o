@@ -1,0 +1,798 @@
+algoritmo "Desafio LogiFast"
+
+var
+   MAX_ENTREGAS, MAX_REGIOES, MAX_PERCURSO, QTD_NIVEIS: inteiro
+   ITENS_POR_PAGINA: inteiro
+   URGENTE, PRIORITARIA, NORMAL: inteiro
+   AGUARDANDO, EM_TRANSPORTE, ENTREGUE: inteiro
+   VALOR_KM, PESO_MAXIMO: real
+   PESO_LIMITE_1, PESO_LIMITE_2, PESO_LIMITE_3: real
+   ACRESC_PESO_1, ACRESC_PESO_2, ACRESC_PESO_3: real
+   ACRESC_PRIORITARIA, ACRESC_URGENTE: real
+
+   vCodigo: vetor [1..30] de inteiro
+   vDestinatario: vetor [1..30] de caractere
+   vOrigem: vetor [1..30] de inteiro
+   vDestino: vetor [1..30] de inteiro
+   vPeso: vetor [1..30] de real
+   vValor: vetor [1..30] de real
+   vPrioridade: vetor [1..30] de inteiro
+   vDistancia: vetor [1..30] de inteiro
+   vStatus: vetor [1..30] de inteiro
+   vCusto: vetor [1..30] de real
+   qtdEntregas: inteiro
+
+   matDist: vetor [1..5, 1..5] de inteiro
+   nomeRegiao: vetor [1..5] de caractere
+   nomePrioridade: vetor [1..3] de caractere
+   nomeStatus: vetor [1..3] de caractere
+   contRegiao: vetor [1..5] de inteiro
+   contStatus: vetor [1..3] de inteiro
+   contPrio: vetor [1..3] de inteiro
+
+   percurso: vetor [1..10] de inteiro
+   tamPercurso, opcao: inteiro
+   tecla: caractere
+
+procedimento inicializarConstantes
+inicio
+   MAX_ENTREGAS <- 30
+   MAX_REGIOES <- 5
+   MAX_PERCURSO <- 10
+   QTD_NIVEIS <- 3
+   ITENS_POR_PAGINA <- 4
+   URGENTE <- 1
+   PRIORITARIA <- 2
+   NORMAL <- 3
+   AGUARDANDO <- 1
+   EM_TRANSPORTE <- 2
+   ENTREGUE <- 3
+   VALOR_KM <- 2.50
+   PESO_MAXIMO <- 100
+   PESO_LIMITE_1 <- 5
+   PESO_LIMITE_2 <- 20
+   PESO_LIMITE_3 <- 50
+   ACRESC_PESO_1 <- 0.10
+   ACRESC_PESO_2 <- 0.20
+   ACRESC_PESO_3 <- 0.35
+   ACRESC_PRIORITARIA <- 0.15
+   ACRESC_URGENTE <- 0.30
+fimprocedimento
+
+procedimento inicializarTextos
+inicio
+   nomeRegiao[1] <- "Centro"
+   nomeRegiao[2] <- "Norte"
+   nomeRegiao[3] <- "Sul"
+   nomeRegiao[4] <- "Leste"
+   nomeRegiao[5] <- "Oeste"
+
+   nomePrioridade[1] <- "Urgente"
+   nomePrioridade[2] <- "Prioritaria"
+   nomePrioridade[3] <- "Normal"
+
+   nomeStatus[1] <- "Aguardando"
+   nomeStatus[2] <- "Em transporte"
+   nomeStatus[3] <- "Entregue"
+fimprocedimento
+
+procedimento inicializarMatriz
+var
+   i, j: inteiro
+inicio
+   matDist[1, 2] <- 12
+   matDist[1, 3] <- 15
+   matDist[1, 4] <- 10
+   matDist[1, 5] <- 14
+   matDist[2, 3] <- 25
+   matDist[2, 4] <- 18
+   matDist[2, 5] <- 20
+   matDist[3, 4] <- 16
+   matDist[3, 5] <- 19
+   matDist[4, 5] <- 22
+
+   para i de 1 ate MAX_REGIOES faca
+      para j de 1 ate MAX_REGIOES faca
+         se i = j entao
+            matDist[i, j] <- 0
+         senao
+            se i > j entao
+               matDist[i, j] <- matDist[j, i]
+            fimse
+         fimse
+      fimpara
+   fimpara
+fimprocedimento
+
+procedimento exibirLinha
+inicio
+   escreval("--------------------------------------------------------------")
+fimprocedimento
+
+procedimento aguardarEnter(mensagem: caractere)
+inicio
+   escreval(mensagem)
+   leia(tecla)
+fimprocedimento
+
+procedimento exibirRegioes
+var
+   i: inteiro
+inicio
+   escreval("Regioes disponiveis:")
+   para i de 1 ate MAX_REGIOES faca
+      escreval("   ", i, " - ", nomeRegiao[i])
+   fimpara
+fimprocedimento
+
+procedimento exibirDetalhesEntrega(indice: inteiro)
+inicio
+   exibirLinha
+   escreval("Codigo ..........: ", vCodigo[indice])
+   escreval("Destinatario ....: ", vDestinatario[indice])
+   escreval("Origem ..........: ", nomeRegiao[vOrigem[indice]])
+   escreval("Destino .........: ", nomeRegiao[vDestino[indice]])
+   escreval("Peso ............: ", vPeso[indice]:8:2, " kg")
+   escreval("Valor mercadoria : R$ ", vValor[indice]:10:2)
+   escreval("Prioridade ......: ", nomePrioridade[vPrioridade[indice]])
+   escreval("Distancia .......: ", vDistancia[indice], " km")
+   escreval("Status ..........: ", nomeStatus[vStatus[indice]])
+   escreval("Custo estimado ..: R$ ", vCusto[indice]:10:2)
+   exibirLinha
+fimprocedimento
+
+procedimento exibirResumoEntrega(indice: inteiro)
+inicio
+   escreval("Cod ", vCodigo[indice], " | ", vDestinatario[indice], " | ", nomeRegiao[vOrigem[indice]], " -> ", nomeRegiao[vDestino[indice]], " | ", vDistancia[indice], " km | R$ ", vCusto[indice]:6:2)
+   escreval("    Peso ", vPeso[indice]:5:2, " kg | Valor R$ ", vValor[indice]:8:2, " | ", nomePrioridade[vPrioridade[indice]], " | ", nomeStatus[vStatus[indice]])
+fimprocedimento
+
+funcao obterDistancia(codOrigem: inteiro; codDestino: inteiro): inteiro
+inicio
+   retorne matDist[codOrigem, codDestino]
+fimfuncao
+
+funcao calcularCusto(distanciaKm: inteiro; pesoKg: real; prioEntrega: inteiro): real
+var
+   percPeso, percPrio: real
+inicio
+   se pesoKg <= PESO_LIMITE_1 entao
+      percPeso <- 0
+   senao
+      se (pesoKg > PESO_LIMITE_1) e (pesoKg <= PESO_LIMITE_2) entao
+         percPeso <- ACRESC_PESO_1
+      senao
+         se (pesoKg > PESO_LIMITE_2) e (pesoKg <= PESO_LIMITE_3) entao
+            percPeso <- ACRESC_PESO_2
+         senao
+            percPeso <- ACRESC_PESO_3
+         fimse
+      fimse
+   fimse
+
+   percPrio <- 0
+
+   se prioEntrega = URGENTE entao
+      percPrio <- ACRESC_URGENTE
+   fimse
+
+   se prioEntrega = PRIORITARIA entao
+      percPrio <- ACRESC_PRIORITARIA
+   fimse
+
+   retorne distanciaKm * VALOR_KM * (1 + percPeso + percPrio)
+fimfuncao
+
+funcao localizarEntrega(codigoBusca: inteiro): inteiro
+var
+   i, achou: inteiro
+inicio
+   achou <- 0
+   i <- 1
+
+   enquanto (i <= qtdEntregas) e (achou = 0) faca
+      se vCodigo[i] = codigoBusca entao
+         achou <- i
+      fimse
+      i <- i + 1
+   fimenquanto
+
+   retorne achou
+fimfuncao
+
+procedimento lerInteiroNoIntervalo(campo: caractere; minimo: inteiro; maximo: inteiro; var valorLido: inteiro)
+inicio
+   repita
+      escreva(campo, " (", minimo, " a ", maximo, "): ")
+      leia(valorLido)
+
+      se (valorLido < minimo) ou (valorLido > maximo) entao
+         escreval("ERRO: ", campo, " invalido(a)! Digite um valor de ", minimo, " a ", maximo, ".")
+      fimse
+   ate (valorLido >= minimo) e (valorLido <= maximo)
+fimprocedimento
+
+procedimento cadastrarEntrega
+var
+   codNovo, origNovo, destNovo, prioNova, indice: inteiro
+   nomeNovo: caractere
+   pesoNovo, valorNovo: real
+inicio
+   escreval("=== CADASTRAR ENTREGA ===")
+
+   se qtdEntregas >= MAX_ENTREGAS entao
+      escreval("ERRO: capacidade maxima de ", MAX_ENTREGAS, " entregas atingida.")
+   senao
+      escreval("Entregas cadastradas: ", qtdEntregas, " de ", MAX_ENTREGAS)
+
+      repita
+         escreva("Codigo da entrega (inteiro maior que 0): ")
+         leia(codNovo)
+
+         se codNovo <= 0 entao
+            escreval("ERRO: o codigo deve ser maior que zero.")
+         senao
+            se localizarEntrega(codNovo) > 0 entao
+               escreval("ERRO: codigo ", codNovo, " duplicado!")
+               codNovo <- 0
+            fimse
+         fimse
+      ate codNovo > 0
+
+      repita
+         escreva("Nome/descricao do destinatario: ")
+         leia(nomeNovo)
+
+         se compr(nomeNovo) = 0 entao
+            escreval("ERRO: o destinatario nao pode ficar vazio.")
+         fimse
+      ate compr(nomeNovo) > 0
+
+      exibirRegioes
+      lerInteiroNoIntervalo("Regiao de origem", 1, MAX_REGIOES, origNovo)
+
+      repita
+         lerInteiroNoIntervalo("Regiao de destino", 1, MAX_REGIOES, destNovo)
+
+         se destNovo = origNovo entao
+            escreval("ERRO: origem e destino nao podem ser iguais.")
+         fimse
+      ate destNovo <> origNovo
+
+      repita
+         escreva("Peso da carga em kg (maior que 0 e ate ", PESO_MAXIMO:6:2, "): ")
+         leia(pesoNovo)
+
+         se (pesoNovo <= 0) ou (pesoNovo > PESO_MAXIMO) entao
+            escreval("ERRO: peso invalido (zero, negativo ou acima da capacidade maxima).")
+         fimse
+      ate (pesoNovo > 0) e (pesoNovo <= PESO_MAXIMO)
+
+      repita
+         escreva("Valor da mercadoria em R$ (0 ou mais): ")
+         leia(valorNovo)
+
+         se valorNovo < 0 entao
+            escreval("ERRO: o valor da mercadoria nao pode ser negativo.")
+         fimse
+      ate valorNovo >= 0
+
+      escreval("Prioridades: 1 - Urgente | 2 - Prioritaria | 3 - Normal")
+      lerInteiroNoIntervalo("Prioridade", URGENTE, NORMAL, prioNova)
+
+      indice <- qtdEntregas + 1
+
+      vCodigo[indice] <- codNovo
+      vDestinatario[indice] <- nomeNovo
+      vOrigem[indice] <- origNovo
+      vDestino[indice] <- destNovo
+      vPeso[indice] <- pesoNovo
+      vValor[indice] <- valorNovo
+      vPrioridade[indice] <- prioNova
+      vDistancia[indice] <- obterDistancia(origNovo, destNovo)
+      vStatus[indice] <- AGUARDANDO
+      vCusto[indice] <- calcularCusto(vDistancia[indice], pesoNovo, prioNova)
+
+      qtdEntregas <- indice
+
+      escreval("Entrega cadastrada com sucesso!")
+      exibirDetalhesEntrega(indice)
+   fimse
+fimprocedimento
+
+procedimento listarEntregas
+var
+   i: inteiro
+inicio
+   escreval("=== LISTA DE ENTREGAS ===")
+
+   se qtdEntregas = 0 entao
+      escreval("Nenhuma entrega cadastrada.")
+   senao
+      escreval("Total de entregas cadastradas: ", qtdEntregas)
+      exibirLinha
+
+      para i de 1 ate qtdEntregas faca
+         exibirResumoEntrega(i)
+
+         se ((i mod ITENS_POR_PAGINA) = 0) e (i < qtdEntregas) entao
+            aguardarEnter(">> Digite 1 e aperte ENTER para ver as proximas entregas...")
+         fimse
+      fimpara
+
+      exibirLinha
+   fimse
+fimprocedimento
+
+procedimento consultarEntrega
+var
+   codBusca, indice: inteiro
+inicio
+   escreval("=== CONSULTAR ENTREGA ===")
+   escreva("Informe o codigo da entrega: ")
+   leia(codBusca)
+
+   indice <- localizarEntrega(codBusca)
+
+   se indice = 0 entao
+      escreval("Entrega nao encontrada.")
+   senao
+      exibirDetalhesEntrega(indice)
+   fimse
+fimprocedimento
+
+funcao precede(idxA: inteiro; idxB: inteiro): logico
+var
+   resultado: logico
+inicio
+   resultado <- falso
+
+   se (vPrioridade[idxA] < vPrioridade[idxB]) ou ((vPrioridade[idxA] = vPrioridade[idxB]) e (vValor[idxA] > vValor[idxB])) ou ((vPrioridade[idxA] = vPrioridade[idxB]) e (vValor[idxA] = vValor[idxB]) e (vPeso[idxA] > vPeso[idxB])) ou ((vPrioridade[idxA] = vPrioridade[idxB]) e (vValor[idxA] = vValor[idxB]) e (vPeso[idxA] = vPeso[idxB]) e (vCodigo[idxA] < vCodigo[idxB])) entao
+      resultado <- verdadeiro
+   fimse
+
+   retorne resultado
+fimfuncao
+
+procedimento trocarEntregas(idxA: inteiro; idxB: inteiro)
+var
+   auxInteiro: inteiro
+   auxReal: real
+   auxTexto: caractere
+inicio
+   auxInteiro <- vCodigo[idxA]
+   vCodigo[idxA] <- vCodigo[idxB]
+   vCodigo[idxB] <- auxInteiro
+
+   auxTexto <- vDestinatario[idxA]
+   vDestinatario[idxA] <- vDestinatario[idxB]
+   vDestinatario[idxB] <- auxTexto
+
+   auxInteiro <- vOrigem[idxA]
+   vOrigem[idxA] <- vOrigem[idxB]
+   vOrigem[idxB] <- auxInteiro
+
+   auxInteiro <- vDestino[idxA]
+   vDestino[idxA] <- vDestino[idxB]
+   vDestino[idxB] <- auxInteiro
+
+   auxReal <- vPeso[idxA]
+   vPeso[idxA] <- vPeso[idxB]
+   vPeso[idxB] <- auxReal
+
+   auxReal <- vValor[idxA]
+   vValor[idxA] <- vValor[idxB]
+   vValor[idxB] <- auxReal
+
+   auxInteiro <- vPrioridade[idxA]
+   vPrioridade[idxA] <- vPrioridade[idxB]
+   vPrioridade[idxB] <- auxInteiro
+
+   auxInteiro <- vDistancia[idxA]
+   vDistancia[idxA] <- vDistancia[idxB]
+   vDistancia[idxB] <- auxInteiro
+
+   auxInteiro <- vStatus[idxA]
+   vStatus[idxA] <- vStatus[idxB]
+   vStatus[idxB] <- auxInteiro
+
+   auxReal <- vCusto[idxA]
+   vCusto[idxA] <- vCusto[idxB]
+   vCusto[idxB] <- auxReal
+fimprocedimento
+
+procedimento ordenarEntregas
+var
+   passada, j: inteiro
+   trocou, deveTrocar: logico
+inicio
+   passada <- 1
+
+   repita
+      trocou <- falso
+
+      para j de 1 ate qtdEntregas - passada faca
+         deveTrocar <- precede(j + 1, j)
+
+         se deveTrocar entao
+            trocarEntregas(j, j + 1)
+            trocou <- verdadeiro
+         fimse
+      fimpara
+
+      passada <- passada + 1
+   ate (nao trocou) ou (passada >= qtdEntregas)
+fimprocedimento
+
+procedimento exibirFilaDespacho
+var
+   i, posicaoFila, totalFila: inteiro
+inicio
+   escreval("=== FILA DE DESPACHO ===")
+
+   se qtdEntregas = 0 entao
+      escreval("Nenhuma entrega cadastrada.")
+   senao
+      ordenarEntregas
+
+      totalFila <- 0
+
+      para i de 1 ate qtdEntregas faca
+         se vStatus[i] = AGUARDANDO entao
+            totalFila <- totalFila + 1
+         fimse
+      fimpara
+
+      escreval("Criterios: prioridade, maior valor, maior peso, menor codigo")
+      exibirLinha
+
+      posicaoFila <- 0
+
+      para i de 1 ate qtdEntregas faca
+         se vStatus[i] = AGUARDANDO entao
+            posicaoFila <- posicaoFila + 1
+            escreva("[", posicaoFila, "] ")
+            exibirResumoEntrega(i)
+
+            se ((posicaoFila mod ITENS_POR_PAGINA) = 0) e (posicaoFila < totalFila) entao
+               aguardarEnter(">> Digite 1 e aperte ENTER para ver o restante da fila...")
+            fimse
+         fimse
+      fimpara
+
+      se posicaoFila = 0 entao
+         escreval("Nao ha entregas aguardando despacho.")
+      fimse
+
+      exibirLinha
+   fimse
+fimprocedimento
+
+funcao transicaoValida(statusAtual: inteiro; statusNovo: inteiro): logico
+var
+   valida: logico
+inicio
+   valida <- falso
+
+   se ((statusAtual = AGUARDANDO) e (statusNovo = EM_TRANSPORTE)) ou ((statusAtual = EM_TRANSPORTE) e (statusNovo = ENTREGUE)) entao
+      valida <- verdadeiro
+   fimse
+
+   retorne valida
+fimfuncao
+
+procedimento mudarStatusEntrega(statusNovo: inteiro)
+var
+   codBusca, indice: inteiro
+   permitida: logico
+inicio
+   escreval("=== ALTERAR STATUS PARA: ", nomeStatus[statusNovo], " ===")
+   escreva("Informe o codigo da entrega: ")
+   leia(codBusca)
+
+   indice <- localizarEntrega(codBusca)
+
+   se indice = 0 entao
+      escreval("ERRO: entrega nao encontrada.")
+   senao
+      permitida <- transicaoValida(vStatus[indice], statusNovo)
+
+      se permitida entao
+         vStatus[indice] <- statusNovo
+         escreval("Sucesso: entrega ", vCodigo[indice], " agora esta '", nomeStatus[statusNovo], "'.")
+      senao
+         se vStatus[indice] = ENTREGUE entao
+            escreval("ERRO: entrega ja concluida; nao pode ser modificada.")
+         senao
+            se statusNovo = EM_TRANSPORTE entao
+               escreval("ERRO: entrega ja enviada (ja esta em transporte).")
+            senao
+               escreval("ERRO: entrega ainda aguardando; inicie o transporte antes de finalizar.")
+            fimse
+         fimse
+      fimse
+   fimse
+fimprocedimento
+
+procedimento exibirMatrizEAnalise
+var
+   i, j: inteiro
+   maiorDist, menorDist, somaDist, contDist: inteiro
+   mediaDist: real
+inicio
+   escreval("=== MATRIZ DE DISTANCIAS (km) ===")
+
+   para j de 1 ate MAX_REGIOES faca
+      escreva(j, "=", nomeRegiao[j], "  ")
+   fimpara
+
+   escreval("")
+   escreva("Orig/Dest")
+
+   para j de 1 ate MAX_REGIOES faca
+      escreva(j:6)
+   fimpara
+
+   escreval("")
+
+   maiorDist <- 0
+   menorDist <- 999999
+   somaDist <- 0
+   contDist <- 0
+
+   para i de 1 ate MAX_REGIOES faca
+      escreva(i:5, "    ")
+
+      para j de 1 ate MAX_REGIOES faca
+         escreva(matDist[i, j]:6)
+
+         se matDist[i, j] > maiorDist entao
+            maiorDist <- matDist[i, j]
+         fimse
+
+         se i <> j entao
+            somaDist <- somaDist + matDist[i, j]
+            contDist <- contDist + 1
+
+            se (matDist[i, j] <> 0) e (matDist[i, j] < menorDist) entao
+               menorDist <- matDist[i, j]
+            fimse
+         fimse
+      fimpara
+
+      escreval("")
+   fimpara
+
+   mediaDist <- somaDist / contDist
+
+   escreval("")
+   escreval("Maior distancia existente ........: ", maiorDist, " km")
+   escreval("Menor distancia (diferente de 0) .: ", menorDist, " km")
+   escreval("Media das distancias entre regioes: ", mediaDist:6:2, " km")
+fimprocedimento
+
+procedimento exibirEstatisticas
+var
+   i, j: inteiro
+   idxMaiorValor, idxMaiorPeso, idxMaiorDist, maiorQtdRegiao: inteiro
+   somaPeso, somaValor, somaCusto: real
+   mediaPeso, mediaValor, mediaCusto: real
+inicio
+   escreval("=== ESTATISTICAS ===")
+
+   se qtdEntregas = 0 entao
+      escreval("Nenhuma entrega cadastrada. Nao ha estatisticas para exibir.")
+   senao
+      somaPeso <- 0
+      somaValor <- 0
+      somaCusto <- 0
+
+      idxMaiorValor <- 1
+      idxMaiorPeso <- 1
+      idxMaiorDist <- 1
+
+      para j de 1 ate QTD_NIVEIS faca
+         contStatus[j] <- 0
+         contPrio[j] <- 0
+      fimpara
+
+      para j de 1 ate MAX_REGIOES faca
+         contRegiao[j] <- 0
+      fimpara
+
+      para i de 1 ate qtdEntregas faca
+         contStatus[vStatus[i]] <- contStatus[vStatus[i]] + 1
+         contPrio[vPrioridade[i]] <- contPrio[vPrioridade[i]] + 1
+         contRegiao[vDestino[i]] <- contRegiao[vDestino[i]] + 1
+
+         somaPeso <- somaPeso + vPeso[i]
+         somaValor <- somaValor + vValor[i]
+         somaCusto <- somaCusto + vCusto[i]
+
+         se vValor[i] > vValor[idxMaiorValor] entao
+            idxMaiorValor <- i
+         fimse
+
+         se vPeso[i] > vPeso[idxMaiorPeso] entao
+            idxMaiorPeso <- i
+         fimse
+
+         se vDistancia[i] > vDistancia[idxMaiorDist] entao
+            idxMaiorDist <- i
+         fimse
+      fimpara
+
+      mediaPeso <- somaPeso / qtdEntregas
+      mediaValor <- somaValor / qtdEntregas
+      mediaCusto <- somaCusto / qtdEntregas
+
+      exibirLinha
+
+      escreval("Quantidade total de entregas ...: ", qtdEntregas)
+      escreval("Aguardando .....................: ", contStatus[AGUARDANDO])
+      escreval("Em transporte ..................: ", contStatus[EM_TRANSPORTE])
+      escreval("Entregues ......................: ", contStatus[ENTREGUE])
+      escreval("Urgentes .......................: ", contPrio[URGENTE])
+      escreval("Prioritarias ...................: ", contPrio[PRIORITARIA])
+      escreval("Normais ........................: ", contPrio[NORMAL])
+
+      aguardarEnter(">> Digite 1 e aperte ENTER para continuar...")
+
+      escreval("Peso total transportado ........: ", somaPeso:10:2, " kg")
+      escreval("Media de peso ..................: ", mediaPeso:10:2, " kg")
+      escreval("Valor total das mercadorias ....: R$ ", somaValor:10:2)
+      escreval("Valor medio das mercadorias ....: R$ ", mediaValor:10:2)
+      escreval("Custo total estimado ...........: R$ ", somaCusto:10:2)
+      escreval("Custo medio das entregas .......: R$ ", mediaCusto:10:2)
+
+      aguardarEnter(">> Digite 1 e aperte ENTER para continuar...")
+
+      escreval("Entrega de maior valor .........: cod ", vCodigo[idxMaiorValor], " (", vDestinatario[idxMaiorValor], ") - R$ ", vValor[idxMaiorValor]:10:2)
+      escreval("Entrega de maior peso ..........: cod ", vCodigo[idxMaiorPeso], " (", vDestinatario[idxMaiorPeso], ") - ", vPeso[idxMaiorPeso]:8:2, " kg")
+      escreval("Entrega de maior distancia .....: cod ", vCodigo[idxMaiorDist], " (", vDestinatario[idxMaiorDist], ") - ", vDistancia[idxMaiorDist], " km")
+
+      aguardarEnter(">> Digite 1 e aperte ENTER para continuar...")
+
+      maiorQtdRegiao <- 0
+
+      escreval("Entregas recebidas por regiao:")
+
+      para j de 1 ate MAX_REGIOES faca
+         escreval("   ", nomeRegiao[j], ": ", contRegiao[j])
+
+         se contRegiao[j] > maiorQtdRegiao entao
+            maiorQtdRegiao <- contRegiao[j]
+         fimse
+      fimpara
+
+      escreval("Regiao que mais recebeu entregas (", maiorQtdRegiao, " entrega(s)): ")
+
+      para j de 1 ate MAX_REGIOES faca
+         se contRegiao[j] = maiorQtdRegiao entao
+            escreval("   -> ", nomeRegiao[j])
+         fimse
+      fimpara
+
+      exibirLinha
+   fimse
+fimprocedimento
+
+funcao distanciaTotal(posicao: inteiro): inteiro
+var
+   resultado: inteiro
+inicio
+   se posicao >= tamPercurso entao
+      resultado <- 0
+   senao
+      resultado <- obterDistancia(percurso[posicao], percurso[posicao + 1]) + distanciaTotal(posicao + 1)
+   fimse
+
+   retorne resultado
+fimfuncao
+
+procedimento calcularPercurso
+var
+   k, regiaoLida: inteiro
+   regiaoOk: logico
+inicio
+   escreval("=== CALCULAR PERCURSO RECURSIVAMENTE ===")
+   exibirRegioes
+
+   lerInteiroNoIntervalo("Quantidade de regioes do percurso", 2, MAX_PERCURSO, tamPercurso)
+
+   para k de 1 ate tamPercurso faca
+      repita
+         regiaoOk <- verdadeiro
+
+         escreval("Regiao numero ", k, " do percurso:")
+         lerInteiroNoIntervalo("Codigo da regiao", 1, MAX_REGIOES, regiaoLida)
+
+         se k > 1 entao
+            se regiaoLida = percurso[k - 1] entao
+               escreval("ERRO: a regiao nao pode ser igual a anterior do percurso.")
+               regiaoOk <- falso
+            fimse
+         fimse
+      ate regiaoOk
+
+      percurso[k] <- regiaoLida
+   fimpara
+
+   escreva("Percurso: ")
+
+   para k de 1 ate tamPercurso faca
+      escreva(nomeRegiao[percurso[k]])
+
+      se k < tamPercurso entao
+         escreva(" -> ")
+      fimse
+   fimpara
+
+   escreval("")
+   escreval("Distancia total do percurso: ", distanciaTotal(1), " km")
+fimprocedimento
+
+procedimento mostrarMenu
+inicio
+   exibirLinha
+   escreval("LOGIFAST - SISTEMA DE GERENCIAMENTO DE ENTREGAS")
+   exibirLinha
+   escreval(" 1. Cadastrar entrega")
+   escreval(" 2. Listar entregas")
+   escreval(" 3. Consultar entrega")
+   escreval(" 4. Exibir fila de despacho")
+   escreval(" 5. Iniciar transporte")
+   escreval(" 6. Finalizar entrega")
+   escreval(" 7. Exibir matriz de distancias")
+   escreval(" 8. Exibir estatisticas")
+   escreval(" 9. Calcular percurso recursivamente")
+   escreval("10. Encerrar sistema")
+   exibirLinha
+fimprocedimento
+
+inicio
+   inicializarConstantes
+   inicializarTextos
+   inicializarMatriz
+
+   qtdEntregas <- 0
+   tamPercurso <- 0
+
+   repita
+      mostrarMenu
+      escreva("Escolha uma opcao: ")
+      leia(opcao)
+      escreval("")
+
+      escolha opcao
+         caso 1
+            cadastrarEntrega
+         caso 2
+            listarEntregas
+         caso 3
+            consultarEntrega
+         caso 4
+            exibirFilaDespacho
+         caso 5
+            mudarStatusEntrega(EM_TRANSPORTE)
+         caso 6
+            mudarStatusEntrega(ENTREGUE)
+         caso 7
+            exibirMatrizEAnalise
+         caso 8
+            exibirEstatisticas
+         caso 9
+            calcularPercurso
+         caso 10
+            escreval("Encerrando o sistema LogiFast. Ate logo!")
+         outrocaso
+            escreval("ERRO: opcao invalida! Digite um numero de 1 a 10.")
+      fimescolha
+
+      se opcao <> 10 entao
+         aguardarEnter(">> Digite 1 e aperte ENTER para voltar ao menu...")
+      fimse
+
+      escreval("")
+   ate opcao = 10
+fimalgoritmo
